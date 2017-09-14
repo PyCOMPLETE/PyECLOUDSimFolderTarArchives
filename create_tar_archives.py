@@ -46,9 +46,24 @@ def make_tar_archive(source, tarname, delete_after):
             tar.add(source_base)
         finally:
             os.chdir(old_dir)
+
     if delete_after:
         shutil.rmtree(source)
-    print('Done')
+        print('Deleted %s. Done.' % source)
+    else:
+        print('Done.')
+
+def make_tar_archive_multiple(source, tarname, delete_after):
+    n_tries_max = 5
+    for _ in xrange(n_tries_max):
+        try:
+            make_tar_archive(source, tarname, delete_after)
+            return
+        except IOError as e:
+            print(e)
+            if os.path.isfile(tarname):
+                os.remove(tarname)
+    raise e
 
 def recursively_make_tar_archives(source_folder, target_folder, only_verbose, delete_after):
     """
@@ -64,7 +79,7 @@ def recursively_make_tar_archives(source_folder, target_folder, only_verbose, de
             if only_verbose:
                 print('This would create %s from %s' % (tarname, subdir))
             else:
-                make_tar_archive(subdir, tarname, delete_after)
+                make_tar_archive_multiple(subdir, tarname, delete_after)
         else:
             new_target_folder = os.path.join(target_folder, base)
             recursively_make_tar_archives(subdir, new_target_folder, only_verbose, delete_after)
@@ -73,6 +88,9 @@ if __name__ == '__main__':
     import argparse
     import sys
 
+    if sys.version_info.major != 2:
+        raw_input = input
+
     parser = argparse.ArgumentParser()
     parser.add_argument('source_folder')
     parser.add_argument('target_folder')
@@ -80,8 +98,9 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     if args.delete:
-        cont = raw_input('Are you sure you want to delete after creating tar archives? yes/no')
+        cont = raw_input('Are you sure you want to delete after creating tar archives? yes/no\n')
         if cont != 'yes':
+            print('Exit!')
             sys.exit()
 
     recursively_make_tar_archives(args.source_folder, args.target_folder, only_verbose=True, delete_after=False)
