@@ -75,7 +75,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     recursively_make_tar_archives(args.source_folder, args.target_folder, only_verbose=True)
-    cont = input('Continue? yes/no\n')
+    cont = raw_input('Continue? yes/no\n')
     if cont == 'yes':
         recursively_make_tar_archives(args.source_folder, args.target_folder, only_verbose=False)
 
