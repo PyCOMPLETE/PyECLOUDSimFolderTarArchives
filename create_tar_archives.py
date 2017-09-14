@@ -2,7 +2,7 @@ from __future__ import division, print_function
 import os
 import tarfile
 
-def walk(folder):
+def list_dir(folder):
     """
     Returns the contents of folder: directories and files.
     """
@@ -15,7 +15,7 @@ def is_pyecloud_sim_folder(folder):
     """
     Checks if a folder has the contents that identify it as a PyECLOUD simulation folder.
     """
-    dirs, files = walk(folder)
+    dirs, files = list_dir(folder)
     base_files = map(os.path.basename, files)
     base_dirs = map(os.path.basename, dirs)
     is_sim_folder = ('simulations' in base_dirs and 'config' in base_dirs and
@@ -26,7 +26,7 @@ def make_tar_archive(source, tarname):
     """
     Does nothing if tarname already exists
     """
-    target_folder = os.path.dirname(tarname)
+    target_parent = os.path.dirname(tarname)
     source_parent = os.path.dirname(source)
     source_base = os.path.basename(source)
 
@@ -34,8 +34,8 @@ def make_tar_archive(source, tarname):
         print('%s already exists.' % tarname)
         return
 
-    if not os.path.isdir(target_folder):
-        os.makedirs(target_folder)
+    if not os.path.isdir(target_parent):
+        os.makedirs(target_parent)
 
     print('Creating %s from %s' % (tarname, source))
     with tarfile.open(tarname, 'w') as tar:
@@ -49,17 +49,17 @@ def make_tar_archive(source, tarname):
 
 def recursively_make_tar_archives(source_folder, target_folder, only_verbose):
     """
-    run with only_verbose=True to see what it is doing.
+    Run with only_verbose=True to see what it is doing.
     """
 
-    dirs, _ = walk(source_folder)
+    dirs, _ = list_dir(source_folder)
 
     for subdir in dirs:
         base = os.path.basename(subdir)
         if is_pyecloud_sim_folder(subdir):
             tarname = os.path.join(target_folder, base)+'.tar'
             if only_verbose:
-                print('I would create %s from %s' % (tarname, subdir))
+                print('This would create %s from %s' % (tarname, subdir))
             else:
                 make_tar_archive(subdir, tarname)
         else:
@@ -72,10 +72,10 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('source_folder')
     parser.add_argument('target_folder')
-    parser.add_argument('--real', action='store_true')
     args = parser.parse_args()
 
-    only_verbose = not args.real
-
-    recursively_make_tar_archives(args.source_folder, args.target_folder, only_verbose)
+    recursively_make_tar_archives(args.source_folder, args.target_folder, only_verbose=True)
+    cont = input('Continue? yes/no\n')
+    if cont == 'yes':
+        recursively_make_tar_archives(args.source_folder, args.target_folder, only_verbose=False)
 
