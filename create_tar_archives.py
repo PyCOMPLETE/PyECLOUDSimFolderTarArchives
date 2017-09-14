@@ -1,6 +1,7 @@
 from __future__ import division, print_function
 import os
 import tarfile
+import shutil
 
 def list_dir(folder):
     """
@@ -22,7 +23,7 @@ def is_pyecloud_sim_folder(folder):
               ('run' in base_files or 'run_htcondor' in base_files))
     return is_sim_folder
 
-def make_tar_archive(source, tarname):
+def make_tar_archive(source, tarname, delete_after):
     """
     Does nothing if tarname already exists
     """
@@ -45,9 +46,11 @@ def make_tar_archive(source, tarname):
             tar.add(source_base)
         finally:
             os.chdir(old_dir)
+    if delete_after:
+        shutil.rmtree(source)
     print('Done')
 
-def recursively_make_tar_archives(source_folder, target_folder, only_verbose):
+def recursively_make_tar_archives(source_folder, target_folder, only_verbose, delete_after):
     """
     Run with only_verbose=True to see what it is doing.
     """
@@ -61,21 +64,28 @@ def recursively_make_tar_archives(source_folder, target_folder, only_verbose):
             if only_verbose:
                 print('This would create %s from %s' % (tarname, subdir))
             else:
-                make_tar_archive(subdir, tarname)
+                make_tar_archive(subdir, tarname, delete_after)
         else:
             new_target_folder = os.path.join(target_folder, base)
-            recursively_make_tar_archives(subdir, new_target_folder, only_verbose)
+            recursively_make_tar_archives(subdir, new_target_folder, only_verbose, delete_after)
 
 if __name__ == '__main__':
     import argparse
+    import sys
 
     parser = argparse.ArgumentParser()
     parser.add_argument('source_folder')
     parser.add_argument('target_folder')
+    parser.add_argument('--delete', help='delete source after creating target', action='store_true')
     args = parser.parse_args()
 
-    recursively_make_tar_archives(args.source_folder, args.target_folder, only_verbose=True)
+    if args.delete:
+        cont = raw_input('Are you sure you want to delete after creating tar archives? yes/no')
+        if cont != 'yes':
+            sys.exit()
+
+    recursively_make_tar_archives(args.source_folder, args.target_folder, only_verbose=True, delete_after=False)
     cont = raw_input('Continue? yes/no\n')
     if cont == 'yes':
-        recursively_make_tar_archives(args.source_folder, args.target_folder, only_verbose=False)
+        recursively_make_tar_archives(args.source_folder, args.target_folder, only_verbose=False, delete_after=args.delete)
 
