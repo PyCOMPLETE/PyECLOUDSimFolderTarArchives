@@ -3,6 +3,21 @@ import os
 import tarfile
 import shutil
 
+def eos_fixer(old_func):
+    def new_func(source, tarname, delete_after):
+        n_tries_max = 5
+        for _ in xrange(n_tries_max):
+            try:
+                return old_func(source, tarname, delete_after)
+            except IOError as e:
+                print(e)
+                if os.path.isfile(tarname):
+                    os.remove(tarname)
+                elif os.path.isdir(tarname):
+                    shutil.rmtree(tarname)
+        raise e
+    return new_func
+
 def list_dir(folder):
     """
     Returns the contents of folder: directories and files.
@@ -23,7 +38,9 @@ def is_pyecloud_sim_folder(folder):
               ('run' in base_files or 'run_htcondor' in base_files))
     return is_sim_folder
 
-def make_tar_archive(source, tarname, delete_after):
+# Not used any more
+@eos_fixer
+def make_full_tar_archive(source, tarname, delete_after):
     """
     Does nothing if tarname already exists
     """
@@ -31,15 +48,17 @@ def make_tar_archive(source, tarname, delete_after):
     source_parent = os.path.dirname(source)
     source_base = os.path.basename(source)
 
-    if os.path.isfile(tarname):
-        print('%s already exists.' % tarname)
+    real_tarname = tarname + '.tar'
+
+    if os.path.isfile(real_tarname):
+        print('%s already exists.' % real_tarname)
         return
 
     if not os.path.isdir(target_parent):
         os.makedirs(target_parent)
 
-    print('Creating %s from %s' % (tarname, source))
-    with tarfile.open(tarname, 'w') as tar:
+    print('Creating %s from %s' % (real_tarname, source))
+    with tarfile.open(real_tarname, 'w') as tar:
         old_dir = os.getcwd()
         try:
             os.chdir(source_parent)
@@ -53,17 +72,58 @@ def make_tar_archive(source, tarname, delete_after):
     else:
         print('Done.')
 
-def make_tar_archive_multiple(source, tarname, delete_after):
-    n_tries_max = 5
-    for _ in xrange(n_tries_max):
-        try:
-            make_tar_archive(source, tarname, delete_after)
-            return
-        except IOError as e:
-            print(e)
-            if os.path.isfile(tarname):
-                os.remove(tarname)
-    raise e
+@eos_fixer
+def make_split_tar_archive(source, target, delete_after):
+    """
+    Does nothing if tarname already exists
+    """
+    if os.path.isdir(target):
+        print('%s already exists.' % target)
+        return
+    else:
+        os.makedirs(target)
+
+    print('Creating %s from %s' % (target, source))
+    dirs, files = list_dir(source)
+    for dir_ in (dirs + files):
+        base_dir = os.path.basename(dir_)
+        if base_dir == 'simulations':
+            pass
+        else:
+            target_dir = os.path.join(target, base_dir)
+            if os.path.isdir(dir_):
+                shutil.copytree(dir_, target_dir)
+            else:
+                shutil.copy2(dir_, target_dir)
+
+    source_sim_dir = os.path.join(source, 'simulations')
+    single_sim_dirs, sim_files = list_dir(source_sim_dir)
+    target_sim_dir = os.path.join(target, 'simulations')
+    os.mkdir(target_sim_dir)
+
+    for sim_file in sim_files:
+        target_file = os.path.join(target_sim_dir, os.path.basename(sim_file))
+        shutil.copy2(sim_file, target_file)
+        print('Copy %s to %s' % (sim_file, target_file))
+
+    print('Creating %s from %s' % (target_sim_dir, source_sim_dir))
+    for single_sim_dir in single_sim_dirs:
+        single_sim_base = os.path.basename(single_sim_dir)
+        target_tarname = os.path.join(target_sim_dir, single_sim_base+'.tar')
+        with tarfile.open(target_tarname, 'w') as tar:
+            old_dir = os.getcwd()
+            try:
+                os.chdir(source_sim_dir)
+                tar.add(single_sim_base)
+                #print('Created %s from %s' % (target_tarname, single_sim_dir))
+            finally:
+                os.chdir(old_dir)
+
+    if delete_after:
+        shutil.rmtree(source)
+        print('Deleted %s. Done.' % source)
+    else:
+        print('Done.')
 
 def recursively_make_tar_archives(source_folder, target_folder, only_verbose, delete_after):
     """
@@ -75,11 +135,11 @@ def recursively_make_tar_archives(source_folder, target_folder, only_verbose, de
     for subdir in dirs:
         base = os.path.basename(subdir)
         if is_pyecloud_sim_folder(subdir):
-            tarname = os.path.join(target_folder, base)+'.tar'
+            tarname = os.path.join(target_folder, base)
             if only_verbose:
                 print('This would create %s from %s' % (tarname, subdir))
             else:
-                make_tar_archive_multiple(subdir, tarname, delete_after)
+                make_split_tar_archive(subdir, tarname, delete_after)
         else:
             new_target_folder = os.path.join(target_folder, base)
             recursively_make_tar_archives(subdir, new_target_folder, only_verbose, delete_after)
