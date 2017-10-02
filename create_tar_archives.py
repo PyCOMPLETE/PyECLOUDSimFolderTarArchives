@@ -1,7 +1,8 @@
 from __future__ import division, print_function
 import os
-import tarfile
 import shutil
+import time
+import tarfile
 
 def list_dir(folder):
     """
@@ -12,7 +13,13 @@ def list_dir(folder):
     files = filter(os.path.isfile, all_files)
     return dirs, files
 
-def is_pyecloud_sim_folder(folder):
+def is_single_sim_folder(folder):
+    dirs, files = list_dir(folder)
+    base_files = set(map(os.path.basename, files))
+    is_sim_folder = {'machine_parameters.input', 'beam.beam', 'job.job', 'Pyecltest.mat'}.issubset(base_files) and not (folder == 'config')
+    return is_sim_folder
+
+def is_full_simulation_folder(folder):
     """
     Checks if a folder has the contents that identify it as a PyECLOUD simulation folder.
     """
@@ -25,21 +32,24 @@ def is_pyecloud_sim_folder(folder):
 
 def make_tar_archive(source, tarname, delete_after):
     """
-    Does nothing if tarname already exists
+    Does nothing if tarname already exists.
     """
-    target_parent = os.path.dirname(tarname)
-    source_parent = os.path.dirname(source)
-    source_base = os.path.basename(source)
 
     if os.path.isfile(tarname):
         print('%s already exists.' % tarname)
         return
+
+    target_parent = os.path.dirname(tarname)
+    source_parent = os.path.dirname(source)
+    source_base = os.path.basename(source)
 
     if not os.path.isdir(target_parent):
         os.makedirs(target_parent)
 
     print('Creating %s from %s' % (tarname, source))
     with tarfile.open(tarname, 'w') as tar:
+
+        # chdir is for shorter file names within the tar archive
         old_dir = os.getcwd()
         try:
             os.chdir(source_parent)
@@ -61,25 +71,34 @@ def make_tar_archive_multiple(source, tarname, delete_after):
             return
         except IOError as e:
             print(e)
+            time.sleep(5)
             if os.path.isfile(tarname):
                 os.remove(tarname)
     raise e
 
-def recursively_make_tar_archives(source_folder, target_folder, only_verbose, delete_after):
+def recursively_make_tar_archives(source_folder, target_folder, only_verbose, delete_after, single_sim_or_all_sim):
     """
+    Arguments: source_folder, target_folder, only_verbose, delete_after
     Run with only_verbose=True to see what it is doing.
     """
+    if single_sim_or_all_sim == 'single_sim':
+        sim_folder_func = is_single_sim_folder
+    elif single_sim_or_all_sim == 'all_sim':
+        sim_folder_func = is_full_simulation_folder
 
     dirs, _ = list_dir(source_folder)
 
     for subdir in dirs:
         base = os.path.basename(subdir)
-        if is_pyecloud_sim_folder(subdir):
+        if sim_folder_func(subdir):
             tarname = os.path.join(target_folder, base)+'.tar'
-            if only_verbose:
-                print('This would create %s from %s' % (tarname, subdir))
+            if os.path.isfile(tarname):
+                pass
             else:
-                make_tar_archive_multiple(subdir, tarname, delete_after)
+                if only_verbose:
+                    print('This would create %s from %s.' % (tarname, subdir))
+                else:
+                    make_tar_archive_multiple(subdir, tarname, delete_after, single_sim_or_all_sim)
         else:
             new_target_folder = os.path.join(target_folder, base)
             recursively_make_tar_archives(subdir, new_target_folder, only_verbose, delete_after)
