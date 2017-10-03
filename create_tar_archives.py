@@ -23,9 +23,10 @@ def is_pyecloud_sim_folder(folder):
               ('run' in base_files or 'run_htcondor' in base_files))
     return is_sim_folder
 
-def make_split_tar_archive(source, target, delete_after):
+def single_sim_folder_tar_archive(source, target, delete_after):
     """
-    Does nothing if tarname already exists
+    Does nothing if target already exists.
+
     """
     if os.path.isdir(target):
         print('%s already exists.' % target)
@@ -75,9 +76,9 @@ def make_split_tar_archive(source, target, delete_after):
     else:
         print('Done.')
 
-def recursively_make_tar_archives(source_folder, target_folder, only_verbose, delete_after):
+def recursively_make_tar_archives(source_folder, target_folder, dry_run, delete_after):
     """
-    Run with only_verbose=True to see what it is doing.
+    Run with dry_run=True to see what it is doing.
     """
 
     dirs, _ = list_dir(source_folder)
@@ -85,14 +86,14 @@ def recursively_make_tar_archives(source_folder, target_folder, only_verbose, de
     for subdir in dirs:
         base = os.path.basename(subdir)
         if is_pyecloud_sim_folder(subdir):
-            tarname = os.path.join(target_folder, base)
-            if only_verbose:
-                print('This would create %s from %s' % (tarname, subdir))
+            target = os.path.join(target_folder, base)
+            if dry_run:
+                print('This would create %s from %s' % (target, subdir))
             else:
-                make_split_tar_archive(subdir, tarname, delete_after)
+                single_sim_folder_tar_archive(subdir, target, delete_after)
         else:
             new_target_folder = os.path.join(target_folder, base)
-            recursively_make_tar_archives(subdir, new_target_folder, only_verbose, delete_after)
+            recursively_make_tar_archives(subdir, new_target_folder, dry_run, delete_after)
 
 if __name__ == '__main__':
     import argparse
@@ -113,8 +114,8 @@ if __name__ == '__main__':
             print('Exit!')
             sys.exit()
 
-    recursively_make_tar_archives(args.source_folder, args.target_folder, only_verbose=True, delete_after=False)
+    recursively_make_tar_archives(args.source_folder, args.target_folder, dry_run=True, delete_after=False)
     cont = raw_input('Continue? yes/no\n')
     if cont == 'yes':
-        recursively_make_tar_archives(args.source_folder, args.target_folder, only_verbose=False, delete_after=args.delete)
+        recursively_make_tar_archives(args.source_folder, args.target_folder, dry_run=False, delete_after=args.delete)
 
