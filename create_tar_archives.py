@@ -23,39 +23,6 @@ def is_pyecloud_sim_folder(folder):
               ('run' in base_files or 'run_htcondor' in base_files))
     return is_sim_folder
 
-# Not used any more
-def make_full_tar_archive(source, tarname, delete_after):
-    """
-    Does nothing if tarname already exists
-    """
-    target_parent = os.path.dirname(tarname)
-    source_parent = os.path.dirname(source)
-    source_base = os.path.basename(source)
-
-    real_tarname = tarname + '.tar'
-
-    if os.path.isfile(real_tarname):
-        print('%s already exists.' % real_tarname)
-        return
-
-    if not os.path.isdir(target_parent):
-        os.makedirs(target_parent)
-
-    print('Creating %s from %s' % (real_tarname, source))
-    with tarfile.open(real_tarname, 'w') as tar:
-        old_dir = os.getcwd()
-        try:
-            os.chdir(source_parent)
-            tar.add(source_base)
-        finally:
-            os.chdir(old_dir)
-
-    if delete_after:
-        shutil.rmtree(source)
-        print('Deleted %s. Done.' % source)
-    else:
-        print('Done.')
-
 def make_split_tar_archive(source, target, delete_after):
     """
     Does nothing if tarname already exists
