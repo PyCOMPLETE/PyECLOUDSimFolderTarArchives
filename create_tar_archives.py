@@ -3,21 +3,6 @@ import os
 import tarfile
 import shutil
 
-def eos_fixer(old_func):
-    def new_func(source, tarname, delete_after):
-        n_tries_max = 5
-        for _ in xrange(n_tries_max):
-            try:
-                return old_func(source, tarname, delete_after)
-            except IOError as e:
-                print(e)
-                if os.path.isfile(tarname):
-                    os.remove(tarname)
-                elif os.path.isdir(tarname):
-                    shutil.rmtree(tarname)
-        raise e
-    return new_func
-
 def list_dir(folder):
     """
     Returns the contents of folder: directories and files.
@@ -39,7 +24,6 @@ def is_pyecloud_sim_folder(folder):
     return is_sim_folder
 
 # Not used any more
-@eos_fixer
 def make_full_tar_archive(source, tarname, delete_after):
     """
     Does nothing if tarname already exists
@@ -72,7 +56,6 @@ def make_full_tar_archive(source, tarname, delete_after):
     else:
         print('Done.')
 
-@eos_fixer
 def make_split_tar_archive(source, target, delete_after):
     """
     Does nothing if tarname already exists
