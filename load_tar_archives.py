@@ -28,3 +28,16 @@ def module_from_tar(tar_archive, file_name, module_name):
     exec(file_str, module.__dict__)
     return module
 
+def dump_file(tar_archive, file_name, output=None):
+    tar_base = os.path.basename(tar_archive)[:-4]
+
+    with tarfile.open(tar_archive) as tar:
+        # String that contains the specified file
+        file_str = tar.extractfile(os.path.join(tar_base, file_name)).read()
+
+    if output is None:
+        print(file_str)
+    else:
+        with open(output, 'w') as f:
+            f.write(file_str)
+
