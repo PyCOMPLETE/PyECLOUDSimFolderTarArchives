@@ -1,13 +1,17 @@
 #!/usr/bin/python2
+"""
+This script copys a local folder to the ecloud-simulations cern project.
+It uses rsync, which has more functionality than scp.
+"""
 from __future__ import print_function, division
 import sys
 import os
 
+user = 'pdijksta' # Change this accordingly.
+
 # python3 compatibility
 if sys.version_info.major != 2:
     raw_input = input
-
-user = 'pdijksta'
 
 local_backup_folders = '/backup/local_backup_storage_tar/*'
 hostname = '%s@lxplus.cern.ch' % user

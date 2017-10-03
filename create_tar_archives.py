@@ -1,7 +1,7 @@
 from __future__ import division, print_function
 import os
-import tarfile
 import shutil
+import tarfile
 
 def list_dir(folder):
     """
@@ -14,26 +14,36 @@ def list_dir(folder):
 
 def is_pyecloud_sim_folder(folder):
     """
-    Checks if a folder has the contents that identify it as a PyECLOUD simulation folder.
+    Checks if a folder has the contents that identify it as a PyECLOUD simulation folder:
+        - 'simulations' and 'config' as part of the subfolders.
+        - 'run' or 'run_htcondor' as part of the files.
     """
     dirs, files = list_dir(folder)
     base_files = map(os.path.basename, files)
     base_dirs = map(os.path.basename, dirs)
-    is_sim_folder = ('simulations' in base_dirs and 'config' in base_dirs and
-              ('run' in base_files or 'run_htcondor' in base_files))
+    is_sim_folder = (
+        'simulations' in base_dirs and
+        'config' in base_dirs and
+        ('run' in base_files or 'run_htcondor' in base_files)
+    )
     return is_sim_folder
 
 def single_sim_folder_tar_archive(source, target, delete_after):
     """
+    source: a pyecloud sim folder (as specified in the function 'is_pyecloud_sim_folder')
+    target: any folder
+    delete_after: delete source folder at the end.
     Does nothing if target already exists.
 
     """
     if os.path.isdir(target):
         print('%s already exists.' % target)
         return
-    else:
-        os.makedirs(target)
 
+    # Create target folder
+    os.makedirs(target)
+
+    # Copy all folders / files except the 'simulations' subfolder
     print('Creating %s from %s' % (target, source))
     dirs, files = list_dir(source)
     for dir_ in (dirs + files):
@@ -47,16 +57,21 @@ def single_sim_folder_tar_archive(source, target, delete_after):
             else:
                 shutil.copy2(dir_, target_dir)
 
+    # Create target 'simulations' folder.
     source_sim_dir = os.path.join(source, 'simulations')
-    single_sim_dirs, sim_files = list_dir(source_sim_dir)
     target_sim_dir = os.path.join(target, 'simulations')
     os.mkdir(target_sim_dir)
 
+    # Get the names of files and subfolders of the source 'simulations' folder
+    single_sim_dirs, sim_files = list_dir(source_sim_dir)
+
+    # Copy files in source 'simulations' folder.
     for sim_file in sim_files:
         target_file = os.path.join(target_sim_dir, os.path.basename(sim_file))
         shutil.copy2(sim_file, target_file)
         print('Copy %s to %s' % (sim_file, target_file))
 
+    # Create tar archives in target 'simulations' folders from source 'simulations' subfolders.
     print('Creating %s from %s' % (target_sim_dir, source_sim_dir))
     for single_sim_dir in single_sim_dirs:
         single_sim_base = os.path.basename(single_sim_dir)
@@ -66,10 +81,10 @@ def single_sim_folder_tar_archive(source, target, delete_after):
             try:
                 os.chdir(source_sim_dir)
                 tar.add(single_sim_base)
-                #print('Created %s from %s' % (target_tarname, single_sim_dir))
             finally:
                 os.chdir(old_dir)
 
+    # Optionally delete source.
     if delete_after:
         shutil.rmtree(source)
         print('Deleted %s. Done.' % source)
@@ -78,7 +93,11 @@ def single_sim_folder_tar_archive(source, target, delete_after):
 
 def recursively_make_tar_archives(source_folder, target_folder, dry_run, delete_after):
     """
+    This loops through the subfolders of source_folder, and their subfolders, until it finds PyECLOD simulation folders.
+    These are recognised with the function 'is_pyecloud_sim_folder'.
+    It calls 'single_sim_folder_tar_archive' for each of them, with the destination target_folder.
     Run with dry_run=True to see what it is doing.
+    Run with delete_after=True to delete PyECLOUD simulation folders in source_folder afterwards.
     """
 
     dirs, _ = list_dir(source_folder)
@@ -96,6 +115,10 @@ def recursively_make_tar_archives(source_folder, target_folder, dry_run, delete_
             recursively_make_tar_archives(subdir, new_target_folder, dry_run, delete_after)
 
 if __name__ == '__main__':
+    """
+    Command line interface.
+    Always runs dry first.
+    """
     import argparse
     import sys
 
@@ -109,7 +132,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     if args.delete:
-        cont = raw_input('Are you sure you want to delete after creating tar archives? yes/no\n')
+        cont = raw_input('Are you sure you want to delete original files after creating tar archives? yes/no\n')
         if cont != 'yes':
             print('Exit!')
             sys.exit()
