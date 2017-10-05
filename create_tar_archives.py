@@ -106,10 +106,14 @@ def recursively_make_tar_archives(source_folder, target_folder, dry_run, delete_
         base = os.path.basename(subdir)
         if is_pyecloud_sim_folder(subdir):
             target = os.path.join(target_folder, base)
-            if dry_run:
-                print('This would create %s from %s' % (target, subdir))
+            if os.path.isdir(target):
+                # Nothing to do
+                pass
             else:
-                single_sim_folder_tar_archive(subdir, target, delete_after)
+                if dry_run:
+                    print('This would create %s from %s' % (target, subdir))
+                else:
+                    single_sim_folder_tar_archive(subdir, target, delete_after)
         else:
             new_target_folder = os.path.join(target_folder, base)
             recursively_make_tar_archives(subdir, new_target_folder, dry_run, delete_after)
